@@ -17,19 +17,6 @@ def normalize_pid_len(pid):
     return ("0" * prefix_len) + pid
 
 
-def handle_late_parents(processes):
-    for parent in MISSING_PARENTS:
-        if processes.get(parent) == None:
-            new_node = Process(parent, None, "__MISSING__")
-            processes[parent] = new_node
-        for _, ps in enumerate(processes):
-
-            if not processes[ps].ppid == parent:
-                continue
-            if processes.get(parent):
-                processes[parent].childrens.append(processes[ps])
-
-
 def parse_line(line):
     pid, ppid, comm = " ".join(line.split()).split(sep=" ", maxsplit=2)
     pid = normalize_pid_len(pid)
@@ -52,13 +39,17 @@ def scrap_processes():
     return processes
 
 
-def init():
-    try:
-        processes = scrap_processes()
-        handle_late_parents(processes)
-        print_processes(processes[normalize_pid_len(LAUNCHD_PID)], 0)
-    except Exception as e:
-        print("Exception occured", e)
+def handle_late_parents(processes):
+    for parent in MISSING_PARENTS:
+        if processes.get(parent) == None:
+            new_node = Process(parent, None, "__MISSING__")
+            processes[parent] = new_node
+        for _, ps in enumerate(processes):
+
+            if not processes[ps].ppid == parent:
+                continue
+            if processes.get(parent):
+                processes[parent].childrens.append(processes[ps])
 
 
 def print_processes(ps, depth):
@@ -72,6 +63,29 @@ def print_processes(ps, depth):
 
     for child in ps.childrens:
         print_processes(child, depth + 2)
+
+
+def init():
+    """
+    Initializes and prints the hierarchical process tree starting from the launchd process.
+
+    This function performs the following steps:
+    1. Reads process data from standard input.
+    2. Parses the data and constructs a tree of process objects.
+    3. Handles any missing parent processes by creating placeholder nodes.
+    4. Prints the process tree starting from the launchd process (PID 1) in a hierarchical format.
+
+    The function expects input in the following format:
+    PID PPID COMM
+
+    It handles exceptions by printing an error message.
+    """
+    try:
+        processes = scrap_processes()
+        handle_late_parents(processes)
+        print_processes(processes[normalize_pid_len(LAUNCHD_PID)], 0)
+    except Exception as e:
+        print("Exception occured", e)
 
 
 if __name__ == "__main__":
